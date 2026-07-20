@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propi | Encontrá tu propiedad ideal en Rosario y alrededores</title>
+  <meta name="description" content="Propi es la plataforma inmobiliaria exclusiva de Rosario y su región. Contale a nuestro asistente con IA qué propiedad buscás y te conectamos con inmobiliarias locales.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="logo">Prop<span>i</span></a>
+      <nav class="nav">
+        <a href="#top">Inicio</a>
+        <a href="#chat">Buscar propiedad</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#sobre-propi">Sobre Propi</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="top" class="hero">
+      <div class="container hero-inner">
+        <div class="hero-logo">Prop<span>i</span></div>
+        <h1>Encontrá tu próxima propiedad en Rosario y alrededores</h1>
+        <p>Contale a nuestro asistente qué estás buscando y te ayudamos a encontrarlo en Rosario y toda la región metropolitana. Comprar, alquilar o invertir en pozo: arrancá la conversación.</p>
+        <a href="#chat" class="btn btn-primary" id="hero-cta">Empezar búsqueda</a>
+      </div>
+    </section>
+
+    <section id="chat" class="chat-section">
+      <div class="container">
+        <div class="chat-widget" id="chat-widget">
+          <div class="chat-header">
+            <div class="chat-avatar">P</div>
+            <div class="chat-header-text">
+              <strong>Asistente Propi</strong>
+              <span class="chat-status">En línea</span>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chat-messages" aria-live="polite">
+            <p class="chat-placeholder" id="chat-placeholder">Presioná "Empezar búsqueda" para que el asistente arranque la conversación.</p>
+          </div>
+
+          <div class="chat-options" id="chat-options"></div>
+
+          <div class="chat-edit-area" id="chat-edit-area" hidden>
+            <textarea id="chat-edit-textarea" rows="6"></textarea>
+            <button type="button" id="chat-edit-save" class="btn-save">Guardar cambios</button>
+          </div>
+
+          <form class="chat-input-row" id="chat-input-row">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Escribí tu respuesta..."
+              autocomplete="off"
+              disabled
+            >
+            <button type="submit" id="chat-send" disabled>Enviar</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultados" class="results-section" hidden>
+      <div class="container">
+        <h2>Propiedades para vos</h2>
+        <p class="results-subtitle" id="results-subtitle"></p>
+        <div class="results-grid" id="results-grid"></div>
+        <button type="button" class="option-btn" id="results-restart">Iniciar nueva búsqueda</button>
+      </div>
+    </section>
+
+    <section id="como-funciona" class="how-it-works">
+      <div class="container">
+        <h2>¿Cómo funciona?</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="step-number">1</span>
+            <h3>Contanos qué buscás</h3>
+            <p>El asistente te hace unas preguntas rápidas sobre zona de Rosario o la región, tipo de propiedad y presupuesto.</p>
+          </div>
+          <div class="step">
+            <span class="step-number">2</span>
+            <h3>Armamos tu perfil de búsqueda</h3>
+            <p>Con tus respuestas armamos un resumen claro de lo que necesitás.</p>
+          </div>
+          <div class="step">
+            <span class="step-number">3</span>
+            <h3>Ves propiedades que matchean</h3>
+            <p>Te mostramos propiedades acordes a tu búsqueda en Rosario y alrededores, y vos elegís a cuál inmobiliaria contactar.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sobre-propi" class="about-section">
+      <div class="container">
+        <h2>¿Qué es Propi?</h2>
+        <p class="about-lead">
+          Propi es la plataforma inmobiliaria pensada exclusivamente para Rosario y su región: Funes, Roldán, Pérez,
+          Granadero Baigorria, Villa Gobernador Gálvez, Capitán Bermúdez e Ibarlucea, entre otras localidades del Gran Rosario.
+          En lugar de perder horas filtrando avisos, charlás con nuestro asistente y él hace la búsqueda por vos.
+        </p>
+
+        <div class="about-grid">
+          <div class="about-item">
+            <h3>Exclusiva para Rosario y alrededores</h3>
+            <p>No competimos con portales genéricos de todo el país: nos enfocamos únicamente en la ciudad y las localidades vecinas del Gran Rosario, con conocimiento real de cada zona.</p>
+          </div>
+          <div class="about-item">
+            <h3>Búsqueda inteligente por IA</h3>
+            <p>Nuestro asistente conversacional entiende qué estás buscando —comprar, alquilar o invertir en pozo— y arma un perfil de búsqueda preciso en minutos.</p>
+          </div>
+          <div class="about-item">
+            <h3>Conexión directa con inmobiliarias locales</h3>
+            <p>Te ponemos en contacto directo con las inmobiliarias de Rosario y la región que tienen las propiedades que te interesan, sin intermediarios innecesarios.</p>
+          </div>
+        </div>
+
+        <div class="about-audience">
+          <h3>¿A quién está dirigida?</h3>
+          <p>
+            A quien quiera comprar, alquilar o invertir en Rosario y alrededores: familias que buscan su próxima casa,
+            personas que se mudan a la ciudad para estudiar o trabajar, inversores que apuestan a emprendimientos en pozo
+            de la región, e inmobiliarias locales que buscan mostrar sus propiedades a la persona correcta.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Propi — Plataforma inmobiliaria exclusiva de Rosario y su región, Argentina.</p>
+    </div>
+  </footer>
+
+  <script src="js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where python *)",
+      "Bash(where npx *)",
+      "Bash(where node *)",
+      "Bash(where npx.cmd)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command npx -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command py -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Program Files\\\\nodejs\",\"$env:LOCALAPPDATA\\\\Programs\" -ErrorAction SilentlyContinue -Recurse -Include node.exe,npx.cmd -Depth 2 | Select-Object -First 5 FullName; $env:Path -split ';' | Select-String -Pattern 'node|python')",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git config *)"
+    ]
+  }
+}
