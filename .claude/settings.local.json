@@ -12,7 +12,9 @@
       "Bash(git --version)",
       "Bash(gh --version)",
       "Bash(gh auth *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://santinovitulli-source.github.io/propi/)",
+      "Bash(curl -s https://santinovitulli-source.github.io/propi/)"
     ]
   }
 }

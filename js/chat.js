@@ -1,3 +1,6 @@
+import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
+import { db } from './firebase-config.js';
+
 // Reemplazar por el número real de WhatsApp de Propi (formato: 549 + código de área + número, sin espacios ni signos)
 const PROPI_WHATSAPP_NUMBER = '5493410000000';
 
@@ -35,7 +38,7 @@ const initialStep = {
 };
 
 const rentSteps = [
-  { id: 'tipoPropiedad', label: 'Tipo de propiedad', bot: '¿Qué tipo de propiedad estás buscando?', type: 'options', options: ['Departamento', 'Casa', 'PH', 'Local'] },
+  { id: 'tipoPropiedad', label: 'Tipo de propiedad', bot: '¿Qué tipo de propiedad estás buscando?', type: 'options', options: ['Departamento', 'Casa', 'PH', 'Local comercial'] },
   { id: 'zona', label: 'Zona', bot: '¿En qué zona de Rosario te gustaría estar?', type: 'options', options: zonas },
   { id: 'ambientes', label: 'Ambientes', bot: '¿Cuántos ambientes necesitás?', type: 'options', options: ambientesOptions },
   { id: 'precioMensual', label: 'Presupuesto mensual', bot: '¿Cuál es tu presupuesto mensual aproximado (en pesos)?', type: 'text', placeholder: 'Ej: 350.000' },
@@ -291,7 +294,46 @@ async function startAddDetails() {
 
 async function confirmAndShowResults() {
   await botSay('¡Buenísimo! Encontré estas propiedades que matchean con tu búsqueda 👇');
-  showResults();
+  await showResults();
+}
+
+function normalizeWhatsapp(raw) {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (digits.startsWith('549')) return digits;
+  if (digits.startsWith('54')) return `549${digits.slice(2)}`;
+  return `549${digits}`;
+}
+
+async function fetchMatchingProperties() {
+  const baseFilters = [where('operacion', '==', answers.operacion)];
+  if (answers.zona && answers.zona !== 'No estoy seguro') {
+    baseFilters.push(where('zona', '==', answers.zona));
+  }
+
+  const attempts = [];
+  if (answers.tipoPropiedad && answers.ambientes) {
+    attempts.push([...baseFilters, where('tipoPropiedad', '==', answers.tipoPropiedad), where('ambientes', '==', answers.ambientes)]);
+  }
+  if (answers.tipoPropiedad) {
+    attempts.push([...baseFilters, where('tipoPropiedad', '==', answers.tipoPropiedad)]);
+  }
+  if (answers.ambientes) {
+    attempts.push([...baseFilters, where('ambientes', '==', answers.ambientes)]);
+  }
+  attempts.push(baseFilters);
+
+  try {
+    for (const filters of attempts) {
+      const snapshot = await getDocs(query(collection(db, 'propiedades'), ...filters));
+      if (!snapshot.empty) {
+        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }
+    }
+  } catch (err) {
+    console.error('Error buscando propiedades reales:', err);
+  }
+
+  return [];
 }
 
 function parseAmount(text) {
@@ -321,25 +363,62 @@ function buildMockProperties() {
   }));
 }
 
-function buildPropertyCard(property) {
+function toViewModel(property, isReal) {
+  if (!isReal) {
+    return {
+      titulo: property.titulo,
+      precioLabel: property.precio,
+      zona: property.zona,
+      ambientes: property.ambientes,
+      photoUrl: null,
+      whatsappNumber: PROPI_WHATSAPP_NUMBER,
+      contactExtra: '',
+    };
+  }
+
+  const currencyPrefix = property.operacion === 'Alquilar' ? '$' : 'USD';
+  return {
+    titulo: `${property.tipoPropiedad} en ${property.zona}`,
+    precioLabel: formatAmount(Number(property.precio) || 0, currencyPrefix),
+    zona: property.zona,
+    ambientes: property.ambientes,
+    photoUrl: property.fotos && property.fotos.length ? property.fotos[0].url : null,
+    whatsappNumber: normalizeWhatsapp(property.whatsapp),
+    contactExtra: property.descripcion ? ` Descripción: ${property.descripcion}.` : '',
+  };
+}
+
+function buildPropertyCard(property, isReal) {
+  const vm = toViewModel(property, isReal);
+
   const card = document.createElement('div');
   card.className = 'property-card';
 
   const photo = document.createElement('div');
   photo.className = 'property-photo';
-  photo.innerHTML = PROPERTY_PHOTO_ICON;
+  if (vm.photoUrl) {
+    const img = document.createElement('img');
+    img.src = vm.photoUrl;
+    img.alt = '';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    photo.appendChild(img);
+  } else {
+    photo.innerHTML = PROPERTY_PHOTO_ICON;
+  }
   card.appendChild(photo);
 
   const body = document.createElement('div');
   body.className = 'property-body';
 
   const title = document.createElement('h3');
-  title.textContent = property.titulo;
+  title.textContent = vm.titulo;
   body.appendChild(title);
 
   const meta = document.createElement('ul');
   meta.className = 'property-meta';
-  [property.precio, property.zona, `${property.ambientes} ambientes`].forEach((text) => {
+  [vm.precioLabel, vm.zona, `${vm.ambientes} ambientes`].forEach((text) => {
     const li = document.createElement('li');
     li.textContent = text;
     meta.appendChild(li);
@@ -394,20 +473,23 @@ function buildPropertyCard(property) {
     successMsg.hidden = false;
 
     const waMessage = encodeURIComponent(
-      `Hola Propi! Soy ${nombre} (tel: ${telefono}). Me interesa la propiedad: ${property.titulo}, ${property.precio}, ${property.ambientes} ambientes en ${property.zona}.`
+      `Hola Propi! Soy ${nombre} (tel: ${telefono}). Me interesa la propiedad: ${vm.titulo}, ${vm.precioLabel}, ${vm.ambientes} ambientes en ${vm.zona}.${vm.contactExtra}`
     );
-    window.open(`https://wa.me/${PROPI_WHATSAPP_NUMBER}?text=${waMessage}`, '_blank', 'noopener');
+    window.open(`https://wa.me/${vm.whatsappNumber}?text=${waMessage}`, '_blank', 'noopener');
   });
 
   card.appendChild(body);
   return card;
 }
 
-function showResults() {
-  const properties = buildMockProperties();
+async function showResults() {
+  const realProperties = await fetchMatchingProperties();
+  const isReal = realProperties.length > 0;
+  const properties = isReal ? realProperties : buildMockProperties();
+
   resultsSubtitleEl.textContent = `Búsqueda: ${answers.operacion} · ${answers.zona || 'Rosario'}`;
   resultsGridEl.innerHTML = '';
-  properties.forEach((property) => resultsGridEl.appendChild(buildPropertyCard(property)));
+  properties.forEach((property) => resultsGridEl.appendChild(buildPropertyCard(property, isReal)));
   resultsSectionEl.hidden = false;
   resultsSectionEl.scrollIntoView({ behavior: 'smooth' });
 }
