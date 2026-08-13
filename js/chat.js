@@ -20,12 +20,14 @@ const resultsRestartBtn = document.getElementById('results-restart');
 
 const modalOverlayEl = document.getElementById('property-modal-overlay');
 const modalCloseBtn = document.getElementById('modal-close-btn');
+const galleryMainWrapEl = document.getElementById('gallery-main-wrap');
 const galleryPlaceholderEl = document.getElementById('gallery-placeholder');
 const galleryMainImgEl = document.getElementById('gallery-main-img');
 const galleryPrevBtn = document.getElementById('gallery-prev');
 const galleryNextBtn = document.getElementById('gallery-next');
 const galleryCounterEl = document.getElementById('gallery-counter');
 const galleryThumbsEl = document.getElementById('gallery-thumbs');
+const galleryZoomResetBtn = document.getElementById('gallery-zoom-reset');
 const modalAgencyAvatarEl = document.getElementById('modal-agency-avatar');
 const modalAgencyNameEl = document.getElementById('modal-agency-name');
 const modalBadgeEl = document.getElementById('modal-badge');
@@ -530,6 +532,26 @@ function buildPropertyCard(property, isReal) {
 
 let modalPhotos = [];
 let modalIndex = 0;
+let zoomScale = 1;
+let pinchStartDistance = null;
+let pinchStartScale = 1;
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.4;
+const ZOOM_CLICK_LEVEL = 2;
+
+function applyZoom(scale) {
+  zoomScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
+  galleryMainImgEl.style.transform = `scale(${zoomScale})`;
+  const isZoomed = zoomScale > 1;
+  galleryMainWrapEl.classList.toggle('zoomed', isZoomed);
+  galleryZoomResetBtn.hidden = !isZoomed;
+}
+
+function resetZoom() {
+  applyZoom(1);
+}
 
 function renderGalleryMain() {
   const hasPhotos = modalPhotos.length > 0;
@@ -572,6 +594,7 @@ function renderGalleryThumbs() {
     thumb.className = index === modalIndex ? 'active' : '';
     thumb.addEventListener('click', () => {
       modalIndex = index;
+      resetZoom();
       renderGalleryMain();
     });
     galleryThumbsEl.appendChild(thumb);
@@ -581,18 +604,21 @@ function renderGalleryThumbs() {
 function showPreviousPhoto() {
   if (!modalPhotos.length) return;
   modalIndex = (modalIndex - 1 + modalPhotos.length) % modalPhotos.length;
+  resetZoom();
   renderGalleryMain();
 }
 
 function showNextPhoto() {
   if (!modalPhotos.length) return;
   modalIndex = (modalIndex + 1) % modalPhotos.length;
+  resetZoom();
   renderGalleryMain();
 }
 
 function openPropertyModal(vm) {
   modalPhotos = vm.photos;
   modalIndex = 0;
+  resetZoom();
 
   modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
   modalAgencyNameEl.textContent = vm.agencyName;
@@ -633,6 +659,7 @@ function closePropertyModal() {
   modalOverlayEl.hidden = true;
   modalPhotos = [];
   modalIndex = 0;
+  resetZoom();
 }
 
 modalCloseBtn.addEventListener('click', closePropertyModal);
@@ -652,6 +679,55 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closePropertyModal();
   if (e.key === 'ArrowLeft') showPreviousPhoto();
   if (e.key === 'ArrowRight') showNextPhoto();
+});
+
+// Zoom: clic para alternar, rueda del mouse o pellizco para ajustar, doble clic o botón para resetear
+galleryMainImgEl.addEventListener('click', (e) => {
+  e.stopPropagation();
+  applyZoom(zoomScale > 1 ? 1 : ZOOM_CLICK_LEVEL);
+});
+
+galleryMainImgEl.addEventListener('dblclick', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  resetZoom();
+});
+
+galleryZoomResetBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  resetZoom();
+});
+
+galleryMainWrapEl.addEventListener('wheel', (e) => {
+  if (galleryMainImgEl.hidden) return;
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+  applyZoom(zoomScale + delta);
+}, { passive: false });
+
+galleryMainWrapEl.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    pinchStartDistance = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY,
+    );
+    pinchStartScale = zoomScale;
+  }
+}, { passive: true });
+
+galleryMainWrapEl.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && pinchStartDistance) {
+    e.preventDefault();
+    const currentDistance = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY,
+    );
+    applyZoom(pinchStartScale * (currentDistance / pinchStartDistance));
+  }
+}, { passive: false });
+
+galleryMainWrapEl.addEventListener('touchend', (e) => {
+  if (e.touches.length < 2) pinchStartDistance = null;
 });
 
 async function showResults() {
