@@ -14,7 +14,8 @@
       "Bash(gh auth *)",
       "Bash(git config *)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://santinovitulli-source.github.io/propi/)",
-      "Bash(curl -s https://santinovitulli-source.github.io/propi/)"
+      "Bash(curl -s https://santinovitulli-source.github.io/propi/)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://firebasestorage.googleapis.com/v0/b/propi-5ccf9.firebasestorage.app/o/propiedades%2FUnMTjAsLONaFymkYzYFCSlu88EO2%2F3MMw074ELaCHE217pHpL%2F90eb5367-fb46-41fe-8d3b-a739e4e4e910-diag-photo.png?alt=media&token=7fc7db21-ff28-460d-8cd0-d1b64e2535d4\")"
     ]
   }
 }

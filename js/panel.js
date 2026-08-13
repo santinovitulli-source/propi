@@ -101,6 +101,10 @@ function buildPropertyCard(property) {
     img.style.width = '100%';
     img.style.height = '100%';
     img.style.objectFit = 'cover';
+    img.onerror = () => {
+      console.error('No se pudo cargar la foto de la propiedad:', property.fotos[0].url);
+      photo.innerHTML = PROPERTY_PHOTO_ICON;
+    };
     photo.appendChild(img);
   } else {
     photo.innerHTML = PROPERTY_PHOTO_ICON;
@@ -263,6 +267,7 @@ formEl.addEventListener('submit', async (e) => {
 
   const propertyData = {
     inmobiliariaId: currentUser.uid,
+    inmobiliariaNombre: currentUser.displayName || currentUser.email,
     operacion: selectors.operacion.value,
     tipoPropiedad: selectors.tipo.value,
     zona: selectors.zona.value,

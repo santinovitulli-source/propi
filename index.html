@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2">
 </head>
 <body>
 
@@ -80,6 +80,42 @@
       </div>
     </section>
 
+    <div class="property-modal-overlay" id="property-modal-overlay" hidden>
+      <div class="property-modal">
+        <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Cerrar">×</button>
+
+        <div class="modal-gallery">
+          <div class="modal-gallery-main">
+            <div class="modal-gallery-placeholder" id="gallery-placeholder" hidden></div>
+            <img id="gallery-main-img" alt="" hidden>
+            <button type="button" class="gallery-arrow gallery-arrow-prev" id="gallery-prev" aria-label="Foto anterior" hidden>‹</button>
+            <button type="button" class="gallery-arrow gallery-arrow-next" id="gallery-next" aria-label="Foto siguiente" hidden>›</button>
+            <span class="gallery-counter" id="gallery-counter" hidden></span>
+          </div>
+          <div class="gallery-thumbs" id="gallery-thumbs" hidden></div>
+        </div>
+
+        <div class="modal-info">
+          <div class="modal-agency">
+            <div class="modal-agency-avatar" id="modal-agency-avatar"></div>
+            <span id="modal-agency-name"></span>
+          </div>
+
+          <span class="property-badge" id="modal-badge"></span>
+          <h2 id="modal-title"></h2>
+          <p class="modal-price" id="modal-price"></p>
+
+          <ul class="modal-meta" id="modal-meta"></ul>
+
+          <p class="modal-descripcion" id="modal-descripcion"></p>
+
+          <div class="modal-condiciones" id="modal-condiciones" hidden></div>
+
+          <div class="modal-contact" id="modal-contact"></div>
+        </div>
+      </div>
+    </div>
+
     <section id="como-funciona" class="how-it-works">
       <div class="container">
         <h2>¿Cómo funciona?</h2>
@@ -145,6 +181,6 @@
     </div>
   </footer>
 
-  <script type="module" src="js/chat.js"></script>
+  <script type="module" src="js/chat.js?v=2"></script>
 </body>
 </html>

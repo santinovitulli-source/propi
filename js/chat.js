@@ -18,6 +18,24 @@ const resultsSubtitleEl = document.getElementById('results-subtitle');
 const resultsGridEl = document.getElementById('results-grid');
 const resultsRestartBtn = document.getElementById('results-restart');
 
+const modalOverlayEl = document.getElementById('property-modal-overlay');
+const modalCloseBtn = document.getElementById('modal-close-btn');
+const galleryPlaceholderEl = document.getElementById('gallery-placeholder');
+const galleryMainImgEl = document.getElementById('gallery-main-img');
+const galleryPrevBtn = document.getElementById('gallery-prev');
+const galleryNextBtn = document.getElementById('gallery-next');
+const galleryCounterEl = document.getElementById('gallery-counter');
+const galleryThumbsEl = document.getElementById('gallery-thumbs');
+const modalAgencyAvatarEl = document.getElementById('modal-agency-avatar');
+const modalAgencyNameEl = document.getElementById('modal-agency-name');
+const modalBadgeEl = document.getElementById('modal-badge');
+const modalTitleEl = document.getElementById('modal-title');
+const modalPriceEl = document.getElementById('modal-price');
+const modalMetaEl = document.getElementById('modal-meta');
+const modalDescripcionEl = document.getElementById('modal-descripcion');
+const modalCondicionesEl = document.getElementById('modal-condiciones');
+const modalContactEl = document.getElementById('modal-contact');
+
 const PROPERTY_PHOTO_ICON = `<svg viewBox="0 0 64 64" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M8 28L32 10L56 28" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M14 24V54H50V24" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -356,6 +374,7 @@ function buildMockProperties() {
 
   return [0.92, 1, 1.15].map((multiplier, index) => ({
     id: `mock-${index}`,
+    tipo,
     titulo: `${tipo} en ${zona}`,
     precio: baseAmount ? formatAmount(Math.round((baseAmount * multiplier) / 1000) * 1000, currencyPrefix) : 'Consultar precio',
     zona,
@@ -367,10 +386,15 @@ function toViewModel(property, isReal) {
   if (!isReal) {
     return {
       titulo: property.titulo,
+      tipo: property.tipo,
+      operacionLabel: answers.operacion,
       precioLabel: property.precio,
       zona: property.zona,
       ambientes: property.ambientes,
-      photoUrl: null,
+      photos: [],
+      descripcion: 'Propiedad de ejemplo mientras se suman más inmobiliarias a la plataforma en esta búsqueda.',
+      condiciones: [],
+      agencyName: 'Propi',
       whatsappNumber: PROPI_WHATSAPP_NUMBER,
       contactExtra: '',
     };
@@ -379,30 +403,99 @@ function toViewModel(property, isReal) {
   const currencyPrefix = property.operacion === 'Alquilar' ? '$' : 'USD';
   return {
     titulo: `${property.tipoPropiedad} en ${property.zona}`,
+    tipo: property.tipoPropiedad,
+    operacionLabel: property.operacion,
     precioLabel: formatAmount(Number(property.precio) || 0, currencyPrefix),
     zona: property.zona,
     ambientes: property.ambientes,
-    photoUrl: property.fotos && property.fotos.length ? property.fotos[0].url : null,
+    photos: (property.fotos || []).map((foto) => foto.url),
+    descripcion: property.descripcion || 'Esta inmobiliaria todavía no cargó una descripción para esta propiedad.',
+    condiciones: property.condicionesEspeciales || [],
+    agencyName: property.inmobiliariaNombre || 'Inmobiliaria de Rosario',
     whatsappNumber: normalizeWhatsapp(property.whatsapp),
     contactExtra: property.descripcion ? ` Descripción: ${property.descripcion}.` : '',
   };
+}
+
+function buildContactSection(vm) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'contact-section';
+
+  const contactBtn = document.createElement('button');
+  contactBtn.type = 'button';
+  contactBtn.className = 'contact-btn';
+  contactBtn.textContent = 'Contactar por WhatsApp';
+  wrapper.appendChild(contactBtn);
+
+  const leadForm = document.createElement('form');
+  leadForm.className = 'lead-form';
+  leadForm.hidden = true;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Tu nombre';
+  nameInput.required = true;
+
+  const phoneInput = document.createElement('input');
+  phoneInput.type = 'tel';
+  phoneInput.placeholder = 'Tu teléfono';
+  phoneInput.required = true;
+
+  const submitBtn = document.createElement('button');
+  submitBtn.type = 'submit';
+  submitBtn.textContent = 'Enviar';
+
+  leadForm.append(nameInput, phoneInput, submitBtn);
+  wrapper.appendChild(leadForm);
+
+  const successMsg = document.createElement('p');
+  successMsg.className = 'lead-success';
+  successMsg.hidden = true;
+  successMsg.textContent = 'Listo, un asesor de Propi se va a contactar con vos a la brevedad.';
+  wrapper.appendChild(successMsg);
+
+  contactBtn.addEventListener('click', () => {
+    leadForm.hidden = !leadForm.hidden;
+  });
+
+  leadForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nombre = nameInput.value.trim();
+    const telefono = phoneInput.value.trim();
+    if (!nombre || !telefono) return;
+
+    leadForm.hidden = true;
+    contactBtn.hidden = true;
+    successMsg.hidden = false;
+
+    const waMessage = encodeURIComponent(
+      `Hola Propi! Soy ${nombre} (tel: ${telefono}). Me interesa la propiedad: ${vm.titulo}, ${vm.precioLabel}, ${vm.ambientes} ambientes en ${vm.zona}.${vm.contactExtra}`
+    );
+    window.open(`https://wa.me/${vm.whatsappNumber}?text=${waMessage}`, '_blank', 'noopener');
+  });
+
+  return wrapper;
 }
 
 function buildPropertyCard(property, isReal) {
   const vm = toViewModel(property, isReal);
 
   const card = document.createElement('div');
-  card.className = 'property-card';
+  card.className = 'property-card clickable';
 
   const photo = document.createElement('div');
   photo.className = 'property-photo';
-  if (vm.photoUrl) {
+  if (vm.photos.length) {
     const img = document.createElement('img');
-    img.src = vm.photoUrl;
+    img.src = vm.photos[0];
     img.alt = '';
     img.style.width = '100%';
     img.style.height = '100%';
     img.style.objectFit = 'cover';
+    img.onerror = () => {
+      console.error('No se pudo cargar la foto de la propiedad:', vm.photos[0]);
+      photo.innerHTML = PROPERTY_PHOTO_ICON;
+    };
     photo.appendChild(img);
   } else {
     photo.innerHTML = PROPERTY_PHOTO_ICON;
@@ -425,62 +518,141 @@ function buildPropertyCard(property, isReal) {
   });
   body.appendChild(meta);
 
-  const contactBtn = document.createElement('button');
-  contactBtn.type = 'button';
-  contactBtn.className = 'contact-btn';
-  contactBtn.textContent = 'Contactar inmobiliaria';
-  body.appendChild(contactBtn);
-
-  const leadForm = document.createElement('form');
-  leadForm.className = 'lead-form';
-  leadForm.hidden = true;
-
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Tu nombre';
-  nameInput.required = true;
-
-  const phoneInput = document.createElement('input');
-  phoneInput.type = 'tel';
-  phoneInput.placeholder = 'Tu teléfono';
-  phoneInput.required = true;
-
-  const submitBtn = document.createElement('button');
-  submitBtn.type = 'submit';
-  submitBtn.textContent = 'Enviar';
-
-  leadForm.append(nameInput, phoneInput, submitBtn);
-  body.appendChild(leadForm);
-
-  const successMsg = document.createElement('p');
-  successMsg.className = 'lead-success';
-  successMsg.hidden = true;
-  successMsg.textContent = 'Listo, un asesor de Propi se va a contactar con vos a la brevedad.';
-  body.appendChild(successMsg);
-
-  contactBtn.addEventListener('click', () => {
-    leadForm.hidden = !leadForm.hidden;
-  });
-
-  leadForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const nombre = nameInput.value.trim();
-    const telefono = phoneInput.value.trim();
-    if (!nombre || !telefono) return;
-
-    leadForm.hidden = true;
-    contactBtn.hidden = true;
-    successMsg.hidden = false;
-
-    const waMessage = encodeURIComponent(
-      `Hola Propi! Soy ${nombre} (tel: ${telefono}). Me interesa la propiedad: ${vm.titulo}, ${vm.precioLabel}, ${vm.ambientes} ambientes en ${vm.zona}.${vm.contactExtra}`
-    );
-    window.open(`https://wa.me/${vm.whatsappNumber}?text=${waMessage}`, '_blank', 'noopener');
-  });
+  const viewMore = document.createElement('p');
+  viewMore.className = 'property-view-more';
+  viewMore.textContent = 'Ver detalles y fotos →';
+  body.appendChild(viewMore);
 
   card.appendChild(body);
+  card.addEventListener('click', () => openPropertyModal(vm));
   return card;
 }
+
+let modalPhotos = [];
+let modalIndex = 0;
+
+function renderGalleryMain() {
+  const hasPhotos = modalPhotos.length > 0;
+
+  galleryMainImgEl.hidden = !hasPhotos;
+  galleryPlaceholderEl.hidden = hasPhotos;
+  galleryPrevBtn.hidden = modalPhotos.length <= 1;
+  galleryNextBtn.hidden = modalPhotos.length <= 1;
+  galleryCounterEl.hidden = !hasPhotos;
+
+  if (hasPhotos) {
+    galleryMainImgEl.src = modalPhotos[modalIndex];
+    galleryMainImgEl.onerror = () => {
+      galleryMainImgEl.hidden = true;
+      galleryPlaceholderEl.hidden = false;
+    };
+    galleryCounterEl.textContent = `${modalIndex + 1} / ${modalPhotos.length}`;
+  } else {
+    galleryPlaceholderEl.innerHTML = PROPERTY_PHOTO_ICON;
+  }
+
+  galleryThumbsEl.querySelectorAll('img').forEach((thumb, index) => {
+    thumb.classList.toggle('active', index === modalIndex);
+  });
+}
+
+function renderGalleryThumbs() {
+  galleryThumbsEl.innerHTML = '';
+
+  if (modalPhotos.length <= 1) {
+    galleryThumbsEl.hidden = true;
+    return;
+  }
+
+  galleryThumbsEl.hidden = false;
+  modalPhotos.forEach((url, index) => {
+    const thumb = document.createElement('img');
+    thumb.src = url;
+    thumb.alt = '';
+    thumb.className = index === modalIndex ? 'active' : '';
+    thumb.addEventListener('click', () => {
+      modalIndex = index;
+      renderGalleryMain();
+    });
+    galleryThumbsEl.appendChild(thumb);
+  });
+}
+
+function showPreviousPhoto() {
+  if (!modalPhotos.length) return;
+  modalIndex = (modalIndex - 1 + modalPhotos.length) % modalPhotos.length;
+  renderGalleryMain();
+}
+
+function showNextPhoto() {
+  if (!modalPhotos.length) return;
+  modalIndex = (modalIndex + 1) % modalPhotos.length;
+  renderGalleryMain();
+}
+
+function openPropertyModal(vm) {
+  modalPhotos = vm.photos;
+  modalIndex = 0;
+
+  modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
+  modalAgencyNameEl.textContent = vm.agencyName;
+  modalBadgeEl.textContent = vm.operacionLabel || '';
+  modalTitleEl.textContent = vm.titulo;
+  modalPriceEl.textContent = vm.precioLabel;
+  modalDescripcionEl.textContent = vm.descripcion;
+
+  modalMetaEl.innerHTML = '';
+  [`Tipo: ${vm.tipo}`, `Zona: ${vm.zona}`, `Ambientes: ${vm.ambientes}`].forEach((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    modalMetaEl.appendChild(li);
+  });
+
+  modalCondicionesEl.innerHTML = '';
+  if (vm.condiciones.length) {
+    modalCondicionesEl.hidden = false;
+    vm.condiciones.forEach((condicion) => {
+      const span = document.createElement('span');
+      span.textContent = condicion;
+      modalCondicionesEl.appendChild(span);
+    });
+  } else {
+    modalCondicionesEl.hidden = true;
+  }
+
+  modalContactEl.innerHTML = '';
+  modalContactEl.appendChild(buildContactSection(vm));
+
+  renderGalleryMain();
+  renderGalleryThumbs();
+
+  modalOverlayEl.hidden = false;
+}
+
+function closePropertyModal() {
+  modalOverlayEl.hidden = true;
+  modalPhotos = [];
+  modalIndex = 0;
+}
+
+modalCloseBtn.addEventListener('click', closePropertyModal);
+galleryPrevBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  showPreviousPhoto();
+});
+galleryNextBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  showNextPhoto();
+});
+modalOverlayEl.addEventListener('click', (e) => {
+  if (e.target === modalOverlayEl) closePropertyModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (modalOverlayEl.hidden) return;
+  if (e.key === 'Escape') closePropertyModal();
+  if (e.key === 'ArrowLeft') showPreviousPhoto();
+  if (e.key === 'ArrowRight') showNextPhoto();
+});
 
 async function showResults() {
   const realProperties = await fetchMatchingProperties();
@@ -501,6 +673,7 @@ resultsRestartBtn.addEventListener('click', () => {
 });
 
 function startConversation() {
+  closePropertyModal();
   answers = {};
   queue = [initialStep];
   qIndex = 0;
