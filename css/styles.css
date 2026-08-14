@@ -518,9 +518,29 @@ a {
   padding: 24px 0 80px;
 }
 
+.results-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 48px;
+}
+
+.results-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 2.4rem;
+  line-height: 1.25;
+  color: var(--color-text);
+  margin: 0 0 16px;
+}
+
 .results-subtitle {
-  color: var(--color-text-muted);
-  margin-bottom: 32px;
+  font-family: var(--font-body);
+  color: var(--color-accent);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .results-grid {
@@ -1292,6 +1312,10 @@ a {
 
   .hero h1 {
     font-size: 2.1rem;
+  }
+
+  .results-title {
+    font-size: 1.8rem;
   }
 
   .chat-messages {

@@ -767,6 +767,14 @@ galleryMainWrapEl.addEventListener('touchend', (e) => {
 const MIN_COMPAT_SCORE = 55;
 const MAX_RESULTS = 5;
 
+function buildSearchSummaryLine() {
+  const parts = [answers.operacion];
+  if (answers.tipoPropiedad) parts.push(answers.tipoPropiedad);
+  if (answers.zona && answers.zona !== 'No estoy seguro') parts.push(answers.zona);
+  if (answers.ambientes) parts.push(`${answers.ambientes} ambientes`);
+  return parts.filter(Boolean).join(' · ');
+}
+
 async function showResults() {
   const candidates = await fetchPropertiesByOperacion();
 
@@ -776,7 +784,7 @@ async function showResults() {
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_RESULTS);
 
-  resultsSubtitleEl.textContent = `Búsqueda: ${answers.operacion} · ${answers.zona || 'Rosario'}`;
+  resultsSubtitleEl.textContent = buildSearchSummaryLine();
   resultsGridEl.innerHTML = '';
 
   if (scored.length === 0) {
