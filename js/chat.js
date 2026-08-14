@@ -533,23 +533,42 @@ function buildPropertyCard(property, isReal) {
 let modalPhotos = [];
 let modalIndex = 0;
 let zoomScale = 1;
+let panX = 0;
+let panY = 0;
 let pinchStartDistance = null;
 let pinchStartScale = 1;
+let isDragging = false;
+let dragMoved = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragStartPanX = 0;
+let dragStartPanY = 0;
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.4;
 const ZOOM_CLICK_LEVEL = 2;
+const DRAG_THRESHOLD = 4;
+
+function applyTransform() {
+  galleryMainImgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+}
 
 function applyZoom(scale) {
   zoomScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
-  galleryMainImgEl.style.transform = `scale(${zoomScale})`;
+  if (zoomScale === 1) {
+    panX = 0;
+    panY = 0;
+  }
+  applyTransform();
   const isZoomed = zoomScale > 1;
   galleryMainWrapEl.classList.toggle('zoomed', isZoomed);
   galleryZoomResetBtn.hidden = !isZoomed;
 }
 
 function resetZoom() {
+  panX = 0;
+  panY = 0;
   applyZoom(1);
 }
 
@@ -682,8 +701,13 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Zoom: clic para alternar, rueda del mouse o pellizco para ajustar, doble clic o botón para resetear
+// Arrastre: mouse (click y arrastrar) o dedo, solo mientras hay zoom activo
 galleryMainImgEl.addEventListener('click', (e) => {
   e.stopPropagation();
+  if (dragMoved) {
+    dragMoved = false;
+    return;
+  }
   applyZoom(zoomScale > 1 ? 1 : ZOOM_CLICK_LEVEL);
 });
 
@@ -705,13 +729,56 @@ galleryMainWrapEl.addEventListener('wheel', (e) => {
   applyZoom(zoomScale + delta);
 }, { passive: false });
 
+galleryMainImgEl.addEventListener('mousedown', (e) => {
+  if (zoomScale <= 1) return;
+  e.preventDefault();
+  isDragging = true;
+  dragMoved = false;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragStartPanX = panX;
+  dragStartPanY = panY;
+  galleryMainWrapEl.classList.add('dragging');
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) dragMoved = true;
+  panX = dragStartPanX + dx;
+  panY = dragStartPanY + dy;
+  applyTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  isDragging = false;
+  galleryMainWrapEl.classList.remove('dragging');
+  // Si el mouseup ocurre fuera de la imagen, no llega el click nativo que
+  // limpiaría dragMoved; lo limpiamos igual pero después de este tick para
+  // no interferir con el click que sí podría dispararse sobre la imagen.
+  setTimeout(() => {
+    dragMoved = false;
+  }, 0);
+});
+
 galleryMainWrapEl.addEventListener('touchstart', (e) => {
   if (e.touches.length === 2) {
+    isDragging = false;
+    galleryMainWrapEl.classList.remove('dragging');
     pinchStartDistance = Math.hypot(
       e.touches[0].clientX - e.touches[1].clientX,
       e.touches[0].clientY - e.touches[1].clientY,
     );
     pinchStartScale = zoomScale;
+  } else if (e.touches.length === 1 && zoomScale > 1) {
+    isDragging = true;
+    dragStartX = e.touches[0].clientX;
+    dragStartY = e.touches[0].clientY;
+    dragStartPanX = panX;
+    dragStartPanY = panY;
+    galleryMainWrapEl.classList.add('dragging');
   }
 }, { passive: true });
 
@@ -723,11 +790,26 @@ galleryMainWrapEl.addEventListener('touchmove', (e) => {
       e.touches[0].clientY - e.touches[1].clientY,
     );
     applyZoom(pinchStartScale * (currentDistance / pinchStartDistance));
+  } else if (e.touches.length === 1 && isDragging) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - dragStartX;
+    const dy = e.touches[0].clientY - dragStartY;
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) dragMoved = true;
+    panX = dragStartPanX + dx;
+    panY = dragStartPanY + dy;
+    applyTransform();
   }
 }, { passive: false });
 
 galleryMainWrapEl.addEventListener('touchend', (e) => {
   if (e.touches.length < 2) pinchStartDistance = null;
+  if (e.touches.length === 0) {
+    isDragging = false;
+    galleryMainWrapEl.classList.remove('dragging');
+    setTimeout(() => {
+      dragMoved = false;
+    }, 0);
+  }
 });
 
 async function showResults() {

@@ -720,10 +720,17 @@ a {
   cursor: zoom-in;
   transition: transform 0.2s ease;
   touch-action: none;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .modal-gallery-main.zoomed img {
-  cursor: zoom-out;
+  cursor: grab;
+  transition: none;
+}
+
+.modal-gallery-main.dragging img {
+  cursor: grabbing;
 }
 
 .modal-gallery-main img[hidden],
