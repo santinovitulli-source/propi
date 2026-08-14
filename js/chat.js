@@ -1,8 +1,6 @@
 import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
-
-// Reemplazar por el número real de WhatsApp de Propi (formato: 549 + código de área + número, sin espacios ni signos)
-const PROPI_WHATSAPP_NUMBER = '5493410000000';
+import { computeCompatibilityScore, compatibilityLabel } from './compatibility.js';
 
 const messagesEl = document.getElementById('chat-messages');
 const optionsEl = document.getElementById('chat-options');
@@ -15,6 +13,7 @@ const editSaveBtn = document.getElementById('chat-edit-save');
 const chatWidgetEl = document.getElementById('chat-widget');
 const resultsSectionEl = document.getElementById('resultados');
 const resultsSubtitleEl = document.getElementById('results-subtitle');
+const resultsEmptyEl = document.getElementById('results-empty');
 const resultsGridEl = document.getElementById('results-grid');
 const resultsRestartBtn = document.getElementById('results-restart');
 
@@ -31,6 +30,7 @@ const galleryZoomResetBtn = document.getElementById('gallery-zoom-reset');
 const modalAgencyAvatarEl = document.getElementById('modal-agency-avatar');
 const modalAgencyNameEl = document.getElementById('modal-agency-name');
 const modalBadgeEl = document.getElementById('modal-badge');
+const modalCompatEl = document.getElementById('modal-compat');
 const modalTitleEl = document.getElementById('modal-title');
 const modalPriceEl = document.getElementById('modal-price');
 const modalMetaEl = document.getElementById('modal-meta');
@@ -324,84 +324,21 @@ function normalizeWhatsapp(raw) {
   return `549${digits}`;
 }
 
-async function fetchMatchingProperties() {
-  const baseFilters = [where('operacion', '==', answers.operacion)];
-  if (answers.zona && answers.zona !== 'No estoy seguro') {
-    baseFilters.push(where('zona', '==', answers.zona));
-  }
-
-  const attempts = [];
-  if (answers.tipoPropiedad && answers.ambientes) {
-    attempts.push([...baseFilters, where('tipoPropiedad', '==', answers.tipoPropiedad), where('ambientes', '==', answers.ambientes)]);
-  }
-  if (answers.tipoPropiedad) {
-    attempts.push([...baseFilters, where('tipoPropiedad', '==', answers.tipoPropiedad)]);
-  }
-  if (answers.ambientes) {
-    attempts.push([...baseFilters, where('ambientes', '==', answers.ambientes)]);
-  }
-  attempts.push(baseFilters);
-
+async function fetchPropertiesByOperacion() {
   try {
-    for (const filters of attempts) {
-      const snapshot = await getDocs(query(collection(db, 'propiedades'), ...filters));
-      if (!snapshot.empty) {
-        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      }
-    }
+    const snapshot = await getDocs(query(collection(db, 'propiedades'), where('operacion', '==', answers.operacion)));
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (err) {
     console.error('Error buscando propiedades reales:', err);
+    return [];
   }
-
-  return [];
-}
-
-function parseAmount(text) {
-  const digits = (text || '').replace(/[^\d]/g, '');
-  return digits ? parseInt(digits, 10) : null;
 }
 
 function formatAmount(amount, prefix) {
   return `${prefix} ${amount.toLocaleString('es-AR')}`;
 }
 
-function buildMockProperties() {
-  const flow = answers.operacion;
-  const zona = answers.zona || 'Rosario';
-  const ambientes = answers.ambientes || '—';
-  const tipo = answers.tipoPropiedad || (flow === 'En pozo' ? 'Emprendimiento' : 'Propiedad');
-  const rawBudget = flow === 'Alquilar' ? answers.precioMensual : answers.presupuesto;
-  const baseAmount = parseAmount(rawBudget);
-  const currencyPrefix = flow === 'Alquilar' ? '$' : 'USD';
-
-  return [0.92, 1, 1.15].map((multiplier, index) => ({
-    id: `mock-${index}`,
-    tipo,
-    titulo: `${tipo} en ${zona}`,
-    precio: baseAmount ? formatAmount(Math.round((baseAmount * multiplier) / 1000) * 1000, currencyPrefix) : 'Consultar precio',
-    zona,
-    ambientes,
-  }));
-}
-
-function toViewModel(property, isReal) {
-  if (!isReal) {
-    return {
-      titulo: property.titulo,
-      tipo: property.tipo,
-      operacionLabel: answers.operacion,
-      precioLabel: property.precio,
-      zona: property.zona,
-      ambientes: property.ambientes,
-      photos: [],
-      descripcion: 'Propiedad de ejemplo mientras se suman más inmobiliarias a la plataforma en esta búsqueda.',
-      condiciones: [],
-      agencyName: 'Propi',
-      whatsappNumber: PROPI_WHATSAPP_NUMBER,
-      contactExtra: '',
-    };
-  }
-
+function toViewModel(property, score) {
   const currencyPrefix = property.operacion === 'Alquilar' ? '$' : 'USD';
   return {
     titulo: `${property.tipoPropiedad} en ${property.zona}`,
@@ -416,6 +353,8 @@ function toViewModel(property, isReal) {
     agencyName: property.inmobiliariaNombre || 'Inmobiliaria de Rosario',
     whatsappNumber: normalizeWhatsapp(property.whatsapp),
     contactExtra: property.descripcion ? ` Descripción: ${property.descripcion}.` : '',
+    score,
+    compatLabel: compatibilityLabel(score),
   };
 }
 
@@ -479,14 +418,20 @@ function buildContactSection(vm) {
   return wrapper;
 }
 
-function buildPropertyCard(property, isReal) {
-  const vm = toViewModel(property, isReal);
+function buildPropertyCard(property, score) {
+  const vm = toViewModel(property, score);
 
   const card = document.createElement('div');
   card.className = 'property-card clickable';
 
   const photo = document.createElement('div');
   photo.className = 'property-photo';
+
+  const matchBadge = document.createElement('span');
+  matchBadge.className = 'card-match-badge';
+  matchBadge.textContent = `${vm.score}%`;
+  photo.appendChild(matchBadge);
+
   if (vm.photos.length) {
     const img = document.createElement('img');
     img.src = vm.photos[0];
@@ -496,16 +441,22 @@ function buildPropertyCard(property, isReal) {
     img.style.objectFit = 'cover';
     img.onerror = () => {
       console.error('No se pudo cargar la foto de la propiedad:', vm.photos[0]);
-      photo.innerHTML = PROPERTY_PHOTO_ICON;
+      img.remove();
+      photo.insertAdjacentHTML('beforeend', PROPERTY_PHOTO_ICON);
     };
     photo.appendChild(img);
   } else {
-    photo.innerHTML = PROPERTY_PHOTO_ICON;
+    photo.insertAdjacentHTML('beforeend', PROPERTY_PHOTO_ICON);
   }
   card.appendChild(photo);
 
   const body = document.createElement('div');
   body.className = 'property-body';
+
+  const compatBadge = document.createElement('span');
+  compatBadge.className = 'property-badge';
+  compatBadge.textContent = vm.compatLabel;
+  body.appendChild(compatBadge);
 
   const title = document.createElement('h3');
   title.textContent = vm.titulo;
@@ -642,6 +593,7 @@ function openPropertyModal(vm) {
   modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
   modalAgencyNameEl.textContent = vm.agencyName;
   modalBadgeEl.textContent = vm.operacionLabel || '';
+  modalCompatEl.textContent = `${vm.score}% · ${vm.compatLabel}`;
   modalTitleEl.textContent = vm.titulo;
   modalPriceEl.textContent = vm.precioLabel;
   modalDescripcionEl.textContent = vm.descripcion;
@@ -812,14 +764,28 @@ galleryMainWrapEl.addEventListener('touchend', (e) => {
   }
 });
 
+const MIN_COMPAT_SCORE = 55;
+const MAX_RESULTS = 5;
+
 async function showResults() {
-  const realProperties = await fetchMatchingProperties();
-  const isReal = realProperties.length > 0;
-  const properties = isReal ? realProperties : buildMockProperties();
+  const candidates = await fetchPropertiesByOperacion();
+
+  const scored = candidates
+    .map((property) => ({ property, score: computeCompatibilityScore(property, answers) }))
+    .filter((entry) => entry.score > MIN_COMPAT_SCORE)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_RESULTS);
 
   resultsSubtitleEl.textContent = `Búsqueda: ${answers.operacion} · ${answers.zona || 'Rosario'}`;
   resultsGridEl.innerHTML = '';
-  properties.forEach((property) => resultsGridEl.appendChild(buildPropertyCard(property, isReal)));
+
+  if (scored.length === 0) {
+    resultsEmptyEl.hidden = false;
+  } else {
+    resultsEmptyEl.hidden = true;
+    scored.forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
+  }
+
   resultsSectionEl.hidden = false;
   resultsSectionEl.scrollIntoView({ behavior: 'smooth' });
 }
@@ -842,6 +808,7 @@ function startConversation() {
   disableInput();
   editAreaEl.hidden = true;
   resultsSectionEl.hidden = true;
+  resultsEmptyEl.hidden = true;
   resultsGridEl.innerHTML = '';
   askCurrent();
 }

@@ -530,6 +530,17 @@ a {
   margin-bottom: 32px;
 }
 
+.results-empty {
+  color: var(--color-text-muted);
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto 32px;
+}
+
+.results-empty[hidden] {
+  display: none;
+}
+
 .property-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -540,12 +551,26 @@ a {
 }
 
 .property-photo {
+  position: relative;
   height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--color-surface-alt), var(--color-bg));
   color: var(--color-accent);
+}
+
+.card-match-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  z-index: 2;
 }
 
 .property-body {
@@ -1100,6 +1125,27 @@ a {
   font-weight: 600;
   padding: 3px 10px;
   border-radius: 999px;
+}
+
+.modal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.match-badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.match-badge[hidden] {
+  display: none;
 }
 
 /* Property form modal */
