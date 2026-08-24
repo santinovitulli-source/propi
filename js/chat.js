@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
-import { computeCompatibilityScore, compatibilityLabel } from './compatibility.js';
+import { computeCompatibilityScore, compatibilityLabel, parseAmount } from './compatibility.js';
 
 const messagesEl = document.getElementById('chat-messages');
 const optionsEl = document.getElementById('chat-options');
@@ -13,7 +13,6 @@ const editSaveBtn = document.getElementById('chat-edit-save');
 const chatWidgetEl = document.getElementById('chat-widget');
 const resultsSectionEl = document.getElementById('resultados');
 const resultsSubtitleEl = document.getElementById('results-subtitle');
-const resultsEmptyEl = document.getElementById('results-empty');
 const resultsLowCountEl = document.getElementById('results-low-count');
 const resultsGridEl = document.getElementById('results-grid');
 const resultsRestartBtn = document.getElementById('results-restart');
@@ -339,6 +338,47 @@ function formatAmount(amount, prefix) {
   return `${prefix} ${amount.toLocaleString('es-AR')}`;
 }
 
+// Barrios reales de Rosario que usamos para armar las propiedades de ejemplo.
+const EXAMPLE_ZONAS = ['Centro', 'Pichincha', 'Echesortu', 'Fisherton', 'Zona Sur'];
+
+// Se muestran solo cuando todavía no hay 4 propiedades reales cargadas para
+// esta operación, para que la pantalla de resultados se vea completa. Se
+// arman a partir de lo que respondió el usuario, con precios de referencia
+// razonables para Rosario si no dio un presupuesto claro.
+function buildExampleProperties() {
+  const flow = answers.operacion || 'Alquilar';
+  const esEnPozo = flow === 'En pozo';
+  const tipoBase = answers.tipoPropiedad || (esEnPozo ? 'Emprendimiento' : 'Departamento');
+  const ambientesBase = answers.ambientes && answers.ambientes !== '4 o más' ? answers.ambientes : '2';
+
+  const rawBudget = flow === 'Alquilar' ? answers.precioMensual : answers.presupuesto;
+  const budgetDefault = flow === 'Alquilar' ? 280000 : esEnPozo ? 90000 : 120000;
+  const budget = parseAmount(rawBudget) || budgetDefault;
+
+  const zonaPreferida = answers.zona && answers.zona !== 'No estoy seguro' ? answers.zona : EXAMPLE_ZONAS[0];
+  const zonas = [zonaPreferida, ...EXAMPLE_ZONAS.filter((z) => z !== zonaPreferida)].slice(0, 4);
+
+  const tipos = esEnPozo
+    ? ['Emprendimiento', 'Emprendimiento', 'Emprendimiento', 'Emprendimiento']
+    : [tipoBase, 'Casa', 'PH', tipoBase];
+  const ambientesVariantes = ['1', ambientesBase, ambientesBase, '3'];
+  const multiplicadores = [0.88, 1, 1.1, 0.97];
+
+  return zonas.map((zona, i) => ({
+    esEjemplo: true,
+    operacion: flow,
+    tipoPropiedad: tipos[i],
+    zona,
+    ambientes: ambientesVariantes[i],
+    precio: Math.max(1000, Math.round((budget * multiplicadores[i]) / 1000) * 1000),
+    descripcion: `Propiedad de ejemplo en ${zona}, Rosario. Cuando las inmobiliarias carguen propiedades reales para esta búsqueda, las vas a ver acá.`,
+    condicionesEspeciales: [],
+    inmobiliariaNombre: 'Propi',
+    whatsapp: '',
+    fotos: [],
+  }));
+}
+
 function toViewModel(property, score) {
   const currencyPrefix = property.operacion === 'Alquilar' ? '$' : 'USD';
   return {
@@ -355,7 +395,8 @@ function toViewModel(property, score) {
     whatsappNumber: normalizeWhatsapp(property.whatsapp),
     contactExtra: property.descripcion ? ` Descripción: ${property.descripcion}.` : '',
     score,
-    compatLabel: compatibilityLabel(score),
+    compatLabel: score === null ? null : compatibilityLabel(score),
+    esEjemplo: Boolean(property.esEjemplo),
   };
 }
 
@@ -419,18 +460,36 @@ function buildContactSection(vm) {
   return wrapper;
 }
 
+function buildExampleCta() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'contact-section';
+
+  const note = document.createElement('p');
+  note.className = 'example-note';
+  note.textContent = 'Esta es una propiedad de ejemplo. Todavía estamos sumando inmobiliarias reales en Rosario.';
+  wrapper.appendChild(note);
+
+  const registerLink = document.createElement('a');
+  registerLink.href = 'registro.html';
+  registerLink.className = 'btn btn-primary';
+  registerLink.textContent = '¿Sos inmobiliaria? Registrá tus propiedades';
+  wrapper.appendChild(registerLink);
+
+  return wrapper;
+}
+
 function buildPropertyCard(property, score) {
   const vm = toViewModel(property, score);
 
   const card = document.createElement('div');
-  card.className = 'property-card clickable';
+  card.className = vm.esEjemplo ? 'property-card clickable example-card' : 'property-card clickable';
 
   const photo = document.createElement('div');
   photo.className = 'property-photo';
 
   const matchBadge = document.createElement('span');
   matchBadge.className = 'card-match-badge';
-  matchBadge.textContent = `${vm.score}%`;
+  matchBadge.textContent = vm.esEjemplo ? 'Ejemplo' : `${vm.score}%`;
   photo.appendChild(matchBadge);
 
   if (vm.photos.length) {
@@ -456,7 +515,7 @@ function buildPropertyCard(property, score) {
 
   const compatBadge = document.createElement('span');
   compatBadge.className = 'property-badge';
-  compatBadge.textContent = vm.compatLabel;
+  compatBadge.textContent = vm.esEjemplo ? 'Propiedad de ejemplo' : vm.compatLabel;
   body.appendChild(compatBadge);
 
   const title = document.createElement('h3');
@@ -594,7 +653,7 @@ function openPropertyModal(vm) {
   modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
   modalAgencyNameEl.textContent = vm.agencyName;
   modalBadgeEl.textContent = vm.operacionLabel || '';
-  modalCompatEl.textContent = `${vm.score}% · ${vm.compatLabel}`;
+  modalCompatEl.textContent = vm.esEjemplo ? 'Propiedad de ejemplo' : `${vm.score}% · ${vm.compatLabel}`;
   modalTitleEl.textContent = vm.titulo;
   modalPriceEl.textContent = vm.precioLabel;
   modalDescripcionEl.textContent = vm.descripcion;
@@ -619,7 +678,7 @@ function openPropertyModal(vm) {
   }
 
   modalContactEl.innerHTML = '';
-  modalContactEl.appendChild(buildContactSection(vm));
+  modalContactEl.appendChild(vm.esEjemplo ? buildExampleCta() : buildContactSection(vm));
 
   renderGalleryMain();
   renderGalleryThumbs();
@@ -789,15 +848,16 @@ async function showResults() {
   resultsGridEl.innerHTML = '';
 
   if (scoredAll.length === 0) {
-    resultsEmptyEl.hidden = false;
-    resultsLowCountEl.hidden = true;
+    // Todavía no hay ninguna propiedad real cargada para esta operación:
+    // mostramos ejemplos realistas para que la pantalla se vea completa.
+    resultsLowCountEl.hidden = false;
+    resultsLowCountEl.textContent = 'Todavía estamos sumando inmobiliarias en Rosario. Así se van a ver los resultados con propiedades reales:';
+    buildExampleProperties().forEach((property) => resultsGridEl.appendChild(buildPropertyCard(property, null)));
   } else if (scoredAll.length < TARGET_RESULT_COUNT) {
-    resultsEmptyEl.hidden = true;
     resultsLowCountEl.hidden = false;
     resultsLowCountEl.textContent = `Encontramos ${scoredAll.length} propiedades que se ajustan a tu búsqueda en Rosario.`;
     scoredAll.forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
   } else {
-    resultsEmptyEl.hidden = true;
     resultsLowCountEl.hidden = true;
     scoredAll.slice(0, TARGET_RESULT_COUNT).forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
   }
@@ -824,7 +884,6 @@ function startConversation() {
   disableInput();
   editAreaEl.hidden = true;
   resultsSectionEl.hidden = true;
-  resultsEmptyEl.hidden = true;
   resultsLowCountEl.hidden = true;
   resultsGridEl.innerHTML = '';
   askCurrent();
