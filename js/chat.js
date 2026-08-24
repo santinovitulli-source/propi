@@ -14,6 +14,7 @@ const chatWidgetEl = document.getElementById('chat-widget');
 const resultsSectionEl = document.getElementById('resultados');
 const resultsSubtitleEl = document.getElementById('results-subtitle');
 const resultsEmptyEl = document.getElementById('results-empty');
+const resultsLowCountEl = document.getElementById('results-low-count');
 const resultsGridEl = document.getElementById('results-grid');
 const resultsRestartBtn = document.getElementById('results-restart');
 
@@ -764,8 +765,7 @@ galleryMainWrapEl.addEventListener('touchend', (e) => {
   }
 });
 
-const MIN_COMPAT_SCORE = 55;
-const MAX_RESULTS = 5;
+const TARGET_RESULT_COUNT = 4;
 
 function buildSearchSummaryLine() {
   const parts = [answers.operacion];
@@ -778,20 +778,28 @@ function buildSearchSummaryLine() {
 async function showResults() {
   const candidates = await fetchPropertiesByOperacion();
 
-  const scored = candidates
+  // Siempre mostramos exactamente 4 propiedades (las de mayor puntaje). Si hay
+  // menos de 4 propiedades cargadas para esta operación en total, mostramos
+  // todas las disponibles con un aviso en vez de completar con ficticias.
+  const scoredAll = candidates
     .map((property) => ({ property, score: computeCompatibilityScore(property, answers) }))
-    .filter((entry) => entry.score > MIN_COMPAT_SCORE)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_RESULTS);
+    .sort((a, b) => b.score - a.score);
 
   resultsSubtitleEl.textContent = buildSearchSummaryLine();
   resultsGridEl.innerHTML = '';
 
-  if (scored.length === 0) {
+  if (scoredAll.length === 0) {
     resultsEmptyEl.hidden = false;
+    resultsLowCountEl.hidden = true;
+  } else if (scoredAll.length < TARGET_RESULT_COUNT) {
+    resultsEmptyEl.hidden = true;
+    resultsLowCountEl.hidden = false;
+    resultsLowCountEl.textContent = `Encontramos ${scoredAll.length} propiedades que se ajustan a tu búsqueda en Rosario.`;
+    scoredAll.forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
   } else {
     resultsEmptyEl.hidden = true;
-    scored.forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
+    resultsLowCountEl.hidden = true;
+    scoredAll.slice(0, TARGET_RESULT_COUNT).forEach(({ property, score }) => resultsGridEl.appendChild(buildPropertyCard(property, score)));
   }
 
   resultsSectionEl.hidden = false;
@@ -817,6 +825,7 @@ function startConversation() {
   editAreaEl.hidden = true;
   resultsSectionEl.hidden = true;
   resultsEmptyEl.hidden = true;
+  resultsLowCountEl.hidden = true;
   resultsGridEl.innerHTML = '';
   askCurrent();
 }
