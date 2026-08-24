@@ -59,8 +59,8 @@
       submitBtn.textContent = 'Ingresando...';
 
       try {
-        await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = 'panel.html';
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = credential.user.emailVerified ? 'panel.html' : 'verificar-email.html';
       } catch (err) {
         errorEl.textContent = translateAuthError(err);
         errorEl.hidden = false;

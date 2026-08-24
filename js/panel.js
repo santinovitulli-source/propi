@@ -65,6 +65,10 @@ CONDICIONES.forEach((cond) => {
 });
 
 requireAuth((user) => {
+  if (!user.emailVerified) {
+    window.location.href = 'verificar-email.html';
+    return;
+  }
   currentUser = user;
   document.getElementById('panel-user').textContent = user.displayName || user.email;
   loadProperties();

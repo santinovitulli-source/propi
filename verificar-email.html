@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificá tu email | Propi Inmobiliarias</title>
+  <meta name="description" content="Confirmá tu cuenta de inmobiliaria en Propi para acceder al panel.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=2">
+</head>
+<body class="auth-page">
+
+  <div class="auth-topbar">
+    <a href="index.html" class="logo">Prop<span>i</span></a>
+  </div>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <h1>Verificá tu email</h1>
+      <p class="auth-subtitle">Te enviamos un correo a <strong id="verify-email-address">tu email</strong> para confirmar tu cuenta</p>
+
+      <p class="auth-error" id="verify-error" hidden></p>
+      <p class="auth-success" id="verify-success" hidden></p>
+
+      <p class="verify-instructions">
+        Abrí ese correo (revisá también la carpeta de spam) y hacé clic en el enlace de confirmación.
+        Cuando lo hayas hecho, volvé acá y presioná "Ya verifiqué mi email".
+      </p>
+
+      <button type="button" class="auth-submit" id="verify-check-btn">Ya verifiqué mi email</button>
+      <button type="button" class="option-btn verify-resend-btn" id="verify-resend-btn">Reenviar email de verificación</button>
+
+      <p class="auth-switch"><a href="#" id="verify-logout-link">Cerrar sesión</a></p>
+    </div>
+  </main>
+
+  <script type="module" src="js/verify-email.js"></script>
+</body>
+</html>

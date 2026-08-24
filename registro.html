@@ -48,7 +48,7 @@
   </main>
 
   <script type="module">
-    import { createUserWithEmailAndPassword, updateProfile } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
+    import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
     import { doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
     import { auth, db } from './js/firebase-config.js';
     import { translateAuthError } from './js/auth-errors.js';
@@ -87,7 +87,8 @@
           email,
           creadoEn: serverTimestamp(),
         });
-        window.location.href = 'panel.html';
+        await sendEmailVerification(credential.user);
+        window.location.href = 'verificar-email.html';
       } catch (err) {
         showError(translateAuthError(err));
         submitBtn.disabled = false;
