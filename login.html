@@ -21,26 +21,46 @@
       <h1>Ingresá a tu cuenta</h1>
       <p class="auth-subtitle">Panel para inmobiliarias de Rosario y la región</p>
 
-      <p class="auth-error" id="auth-error" hidden></p>
+      <div id="login-view">
+        <p class="auth-error" id="auth-error" hidden></p>
 
-      <form id="login-form">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="tuinmobiliaria@email.com" autocomplete="email" required>
-        </div>
-        <div class="form-group">
-          <label for="password">Contraseña</label>
-          <input type="password" id="password" placeholder="Tu contraseña" autocomplete="current-password" required>
-        </div>
-        <button type="submit" class="auth-submit" id="submit-btn">Ingresar</button>
-      </form>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="tuinmobiliaria@email.com" autocomplete="email" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" placeholder="Tu contraseña" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="auth-submit" id="submit-btn">Ingresar</button>
+        </form>
 
-      <p class="auth-switch">¿No tenés cuenta? <a href="registro.html">Registrá tu inmobiliaria</a></p>
+        <p class="auth-switch"><a href="#" id="forgot-password-link">¿Olvidaste tu contraseña?</a></p>
+        <p class="auth-switch">¿No tenés cuenta? <a href="registro.html">Registrá tu inmobiliaria</a></p>
+      </div>
+
+      <div id="reset-view" hidden>
+        <p class="auth-subtitle">Ingresá tu email y te mandamos un link para restablecer tu contraseña.</p>
+
+        <p class="auth-error" id="reset-error" hidden></p>
+        <p class="auth-success" id="reset-success" hidden></p>
+
+        <form id="reset-password-form">
+          <div class="form-group">
+            <label for="reset-email">Email</label>
+            <input type="email" id="reset-email" placeholder="tuinmobiliaria@email.com" autocomplete="email" required>
+          </div>
+          <button type="submit" class="auth-submit" id="reset-submit-btn">Enviar link de recuperación</button>
+        </form>
+
+        <p class="auth-switch"><a href="#" id="back-to-login-link">Volver a iniciar sesión</a></p>
+      </div>
     </div>
   </main>
 
   <script type="module">
-    import { signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
+    import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
     import { auth } from './js/firebase-config.js';
     import { translateAuthError } from './js/auth-errors.js';
 
@@ -66,6 +86,54 @@
         errorEl.hidden = false;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Ingresar';
+      }
+    });
+
+    const loginView = document.getElementById('login-view');
+    const resetView = document.getElementById('reset-view');
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    const backToLoginLink = document.getElementById('back-to-login-link');
+    const resetForm = document.getElementById('reset-password-form');
+    const resetErrorEl = document.getElementById('reset-error');
+    const resetSuccessEl = document.getElementById('reset-success');
+    const resetSubmitBtn = document.getElementById('reset-submit-btn');
+
+    forgotPasswordLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginView.hidden = true;
+      resetView.hidden = false;
+      resetErrorEl.hidden = true;
+      resetSuccessEl.hidden = true;
+      document.getElementById('reset-email').focus();
+    });
+
+    backToLoginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetView.hidden = true;
+      loginView.hidden = false;
+    });
+
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resetErrorEl.hidden = true;
+      resetSuccessEl.hidden = true;
+
+      const resetEmail = document.getElementById('reset-email').value.trim();
+
+      resetSubmitBtn.disabled = true;
+      resetSubmitBtn.textContent = 'Enviando...';
+
+      try {
+        await sendPasswordResetEmail(auth, resetEmail);
+        resetSuccessEl.textContent = 'Listo, revisá tu casilla de correo (y la carpeta de spam) para restablecer tu contraseña.';
+        resetSuccessEl.hidden = false;
+        resetForm.reset();
+      } catch (err) {
+        resetErrorEl.textContent = translateAuthError(err);
+        resetErrorEl.hidden = false;
+      } finally {
+        resetSubmitBtn.disabled = false;
+        resetSubmitBtn.textContent = 'Enviar link de recuperación';
       }
     });
   </script>
