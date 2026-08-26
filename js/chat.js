@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { computeCompatibilityScore, compatibilityLabel, parseAmount } from './compatibility.js';
 
@@ -329,7 +329,9 @@ function normalizeWhatsapp(raw) {
 async function fetchPropertiesByOperacion() {
   try {
     const snapshot = await getDocs(query(collection(db, 'propiedades'), where('operacion', '==', answers.operacion)));
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((property) => property.activo !== false);
   } catch (err) {
     console.error('Error buscando propiedades reales:', err);
     return [];
@@ -384,6 +386,8 @@ function buildExampleProperties() {
 function toViewModel(property, score) {
   const currencyPrefix = property.operacion === 'Alquilar' ? '$' : 'USD';
   return {
+    propertyId: property.id || null,
+    inmobiliariaId: property.inmobiliariaId || null,
     titulo: `${property.tipoPropiedad} en ${property.zona}`,
     tipo: property.tipoPropiedad,
     operacionLabel: property.operacion,
@@ -414,9 +418,22 @@ function buildContactSection(vm) {
   contactBtn.target = '_blank';
   contactBtn.rel = 'noopener noreferrer';
   contactBtn.textContent = 'Contactar por WhatsApp';
+  contactBtn.addEventListener('click', () => logContacto(vm));
   wrapper.appendChild(contactBtn);
 
   return wrapper;
+}
+
+// Registro anónimo (sin datos del visitante) de que alguien tocó "Contactar
+// por WhatsApp", para poder mostrar un contador en el panel de administración.
+function logContacto(vm) {
+  addDoc(collection(db, 'contactos'), {
+    propiedadId: vm.propertyId,
+    inmobiliariaId: vm.inmobiliariaId,
+    creadoEn: serverTimestamp(),
+  }).catch((err) => {
+    console.error('No se pudo registrar el contacto:', err);
+  });
 }
 
 function buildExampleCta() {

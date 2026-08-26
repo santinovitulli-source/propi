@@ -1,6 +1,6 @@
 import { signOut } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
 import {
-  collection, doc, setDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -64,11 +64,21 @@ CONDICIONES.forEach((cond) => {
   condicionesEl.appendChild(label);
 });
 
-requireAuth((user) => {
+requireAuth(async (user) => {
   if (!user.emailVerified) {
     window.location.href = 'verificar-email.html';
     return;
   }
+
+  const profileSnap = await getDoc(doc(db, 'inmobiliarias', user.uid));
+  const profile = profileSnap.exists() ? profileSnap.data() : null;
+
+  if (profile && profile.activo === false) {
+    document.getElementById('panel-deactivated').hidden = false;
+    document.getElementById('panel-main-content').hidden = true;
+    return;
+  }
+
   currentUser = user;
   document.getElementById('panel-user').textContent = user.displayName || user.email;
   loadProperties();
