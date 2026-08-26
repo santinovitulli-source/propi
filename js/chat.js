@@ -29,6 +29,7 @@ const galleryThumbsEl = document.getElementById('gallery-thumbs');
 const galleryZoomResetBtn = document.getElementById('gallery-zoom-reset');
 const modalAgencyAvatarEl = document.getElementById('modal-agency-avatar');
 const modalAgencyNameEl = document.getElementById('modal-agency-name');
+const modalAgencyPhoneEl = document.getElementById('modal-agency-phone');
 const modalBadgeEl = document.getElementById('modal-badge');
 const modalCompatEl = document.getElementById('modal-compat');
 const modalTitleEl = document.getElementById('modal-title');
@@ -37,6 +38,7 @@ const modalMetaEl = document.getElementById('modal-meta');
 const modalDescripcionEl = document.getElementById('modal-descripcion');
 const modalCondicionesEl = document.getElementById('modal-condiciones');
 const modalContactEl = document.getElementById('modal-contact');
+const modalBackBtn = document.getElementById('modal-back-btn');
 
 const PROPERTY_PHOTO_ICON = `<svg viewBox="0 0 64 64" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M8 28L32 10L56 28" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -393,7 +395,7 @@ function toViewModel(property, score) {
     condiciones: property.condicionesEspeciales || [],
     agencyName: property.inmobiliariaNombre || 'Inmobiliaria de Rosario',
     whatsappNumber: normalizeWhatsapp(property.whatsapp),
-    contactExtra: property.descripcion ? ` Descripción: ${property.descripcion}.` : '',
+    whatsappDisplay: property.whatsapp || '',
     score,
     compatLabel: score === null ? null : compatibilityLabel(score),
     esEjemplo: Boolean(property.esEjemplo),
@@ -404,58 +406,15 @@ function buildContactSection(vm) {
   const wrapper = document.createElement('div');
   wrapper.className = 'contact-section';
 
-  const contactBtn = document.createElement('button');
-  contactBtn.type = 'button';
-  contactBtn.className = 'contact-btn';
+  const message = encodeURIComponent('Hola, vi esta propiedad en Propi y me interesa obtener más información');
+
+  const contactBtn = document.createElement('a');
+  contactBtn.className = 'whatsapp-cta';
+  contactBtn.href = `https://wa.me/${vm.whatsappNumber}?text=${message}`;
+  contactBtn.target = '_blank';
+  contactBtn.rel = 'noopener noreferrer';
   contactBtn.textContent = 'Contactar por WhatsApp';
   wrapper.appendChild(contactBtn);
-
-  const leadForm = document.createElement('form');
-  leadForm.className = 'lead-form';
-  leadForm.hidden = true;
-
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Tu nombre';
-  nameInput.required = true;
-
-  const phoneInput = document.createElement('input');
-  phoneInput.type = 'tel';
-  phoneInput.placeholder = 'Tu teléfono';
-  phoneInput.required = true;
-
-  const submitBtn = document.createElement('button');
-  submitBtn.type = 'submit';
-  submitBtn.textContent = 'Enviar';
-
-  leadForm.append(nameInput, phoneInput, submitBtn);
-  wrapper.appendChild(leadForm);
-
-  const successMsg = document.createElement('p');
-  successMsg.className = 'lead-success';
-  successMsg.hidden = true;
-  successMsg.textContent = 'Listo, un asesor de Propi se va a contactar con vos a la brevedad.';
-  wrapper.appendChild(successMsg);
-
-  contactBtn.addEventListener('click', () => {
-    leadForm.hidden = !leadForm.hidden;
-  });
-
-  leadForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const nombre = nameInput.value.trim();
-    const telefono = phoneInput.value.trim();
-    if (!nombre || !telefono) return;
-
-    leadForm.hidden = true;
-    contactBtn.hidden = true;
-    successMsg.hidden = false;
-
-    const waMessage = encodeURIComponent(
-      `Hola Propi! Soy ${nombre} (tel: ${telefono}). Me interesa la propiedad: ${vm.titulo}, ${vm.precioLabel}, ${vm.ambientes} ambientes en ${vm.zona}.${vm.contactExtra}`
-    );
-    window.open(`https://wa.me/${vm.whatsappNumber}?text=${waMessage}`, '_blank', 'noopener');
-  });
 
   return wrapper;
 }
@@ -652,6 +611,12 @@ function openPropertyModal(vm) {
 
   modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
   modalAgencyNameEl.textContent = vm.agencyName;
+  if (vm.whatsappDisplay) {
+    modalAgencyPhoneEl.textContent = `WhatsApp: ${vm.whatsappDisplay}`;
+    modalAgencyPhoneEl.hidden = false;
+  } else {
+    modalAgencyPhoneEl.hidden = true;
+  }
   modalBadgeEl.textContent = vm.operacionLabel || '';
   modalCompatEl.textContent = vm.esEjemplo ? 'Propiedad de ejemplo' : `${vm.score}% · ${vm.compatLabel}`;
   modalTitleEl.textContent = vm.titulo;
@@ -694,6 +659,7 @@ function closePropertyModal() {
 }
 
 modalCloseBtn.addEventListener('click', closePropertyModal);
+modalBackBtn.addEventListener('click', closePropertyModal);
 galleryPrevBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   showPreviousPhoto();

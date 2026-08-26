@@ -636,68 +636,26 @@ a {
   font-size: 0.9rem;
 }
 
-.contact-btn {
+.whatsapp-cta {
+  display: block;
+  width: 100%;
+  text-align: center;
   border: none;
-  padding: 10px 20px;
-  border-radius: 999px;
   background: var(--color-accent);
   color: var(--color-accent-contrast);
-  font-weight: 600;
+  font-weight: 700;
   font-family: var(--font-body);
-  cursor: pointer;
-  align-self: flex-start;
-}
-
-.lead-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.lead-form[hidden] {
-  display: none;
-}
-
-.lead-form input {
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
+  font-size: 1.05rem;
+  padding: 16px 24px;
   border-radius: 999px;
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-}
-
-.lead-form input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.lead-form input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.lead-form button[type='submit'] {
-  align-self: flex-start;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 999px;
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
-  font-weight: 600;
-  font-family: var(--font-body);
+  text-decoration: none;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.lead-success {
-  color: var(--color-accent);
-  font-size: 0.9rem;
-  margin: 4px 0 0;
-}
-
-.lead-success[hidden] {
-  display: none;
+.whatsapp-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
 }
 
 .property-card.clickable {
@@ -929,9 +887,25 @@ a {
   flex-shrink: 0;
 }
 
-.modal-agency span {
+.modal-agency-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal-agency-name {
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.modal-agency-phone {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.modal-agency-phone[hidden] {
+  display: none;
 }
 
 .modal-info h2 {
@@ -941,7 +915,7 @@ a {
 
 .modal-price {
   font-family: var(--font-heading);
-  font-size: 1.7rem;
+  font-size: 2.4rem;
   font-weight: 600;
   color: var(--color-accent);
   margin: 0;
@@ -990,6 +964,11 @@ a {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.modal-back-btn {
+  align-self: center;
+  margin-top: 4px;
 }
 
 /* Auth pages (login / registro) */
