@@ -89,6 +89,21 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   window.location.href = 'login.html';
 });
 
+const menuToggle = document.getElementById('panel-menu-toggle');
+const headerActions = document.getElementById('panel-header-actions');
+if (menuToggle && headerActions) {
+  menuToggle.addEventListener('click', () => {
+    const isOpen = headerActions.classList.toggle('open');
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+  });
+  headerActions.querySelectorAll('a, button').forEach((el) => {
+    el.addEventListener('click', () => {
+      headerActions.classList.remove('open');
+      menuToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
 async function loadProperties() {
   const q = query(collection(db, 'propiedades'), where('inmobiliariaId', '==', currentUser.uid));
   const snapshot = await getDocs(q);
