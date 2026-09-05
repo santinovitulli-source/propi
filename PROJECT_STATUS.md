@@ -127,21 +127,52 @@ en cambio, cada clic en el botón registra un documento anónimo en la
 colección `contactos` (sin datos del visitante) solo para poder contar
 "contactos generados" en el panel de admin.
 
+### Logo de inmobiliaria (agregado 2026-09-04)
+En `panel.html` hay una tarjeta "Perfil" (arriba de "Mis propiedades") con:
+- Logo actual (o avatar con la inicial del nombre, camel sobre navy, si no
+  hay logo) en un círculo de 72px.
+- Botón grande "Cambiar logo" (mismo estilo `photo-upload-btn` que el de
+  fotos de propiedad) + input de archivo oculto. Valida que sea imagen y
+  pese menos de 2 MB.
+- Botón "Quitar logo" (solo visible si hay logo cargado).
+- Al subir uno nuevo, se sube a Storage, se guarda `logoUrl`/`logoPath` en
+  `inmobiliarias/{uid}`, y se borra el archivo anterior de Storage.
+- Responsive: en mobile (`≤640px`) la tarjeta se apila centrada y los
+  botones pasan a ancho completo (mismo breakpoint del trabajo de
+  responsive del panel).
+
+El logo aparece junto al nombre de la inmobiliaria en el modal de detalle de
+cada propiedad (`.modal-agency-avatar` en `js/chat.js`), reemplazando el
+avatar de inicial cuando `inmobiliariaLogoUrl` está presente en el documento
+de la propiedad. **Limitación conocida**: como ese campo se denormaliza al
+guardar/editar la propiedad, las propiedades ya cargadas no muestran un logo
+nuevo hasta que se vuelvan a guardar desde el panel (mismo compromiso que ya
+existía con `inmobiliariaNombre`).
+
+No hace falta ninguna regla nueva de **Firestore** para esto (la regla de
+`inmobiliarias` ya permite que el dueño edite cualquier campo salvo
+`activo`). Sí se agregó una regla nueva de **Storage** para el path
+`logos/{inmobiliariaId}/**` — ver la sección de reglas más abajo, ya
+publicada y verificada en vivo.
+
 ---
 
 ## Firebase: estructura de datos
 
 **Colección `inmobiliarias`** (doc id = uid del usuario de Auth):
 ```
-{ nombre, email, creadoEn: Timestamp, activo?: boolean }
+{ nombre, email, creadoEn: Timestamp, activo?: boolean, logoUrl?: string, logoPath?: string }
 ```
 `activo` es opcional; si no existe o es `true` la cuenta está activa. Si es
-`false`, `panel.js` bloquea el acceso al panel (ver más abajo).
+`false`, `panel.js` bloquea el acceso al panel (ver más abajo). `logoUrl`/
+`logoPath` opcionales, agregados por la sección "Perfil" del panel (ver
+abajo); si no existen, se muestra un avatar con la inicial del nombre.
 
 **Colección `propiedades`** (doc id autogenerado):
 ```
 {
-  inmobiliariaId, inmobiliariaNombre, operacion, tipoPropiedad, zona,
+  inmobiliariaId, inmobiliariaNombre, inmobiliariaLogoUrl?: string,
+  operacion, tipoPropiedad, zona,
   ambientes, precio: number, whatsapp: string (crudo, ej "3411234567"),
   descripcion, condicionesEspeciales: string[],
   fotos: [{ url, path }],           // path en Storage, para poder borrarlas
@@ -150,7 +181,11 @@ colección `contactos` (sin datos del visitante) solo para poder contar
 ```
 `activo` opcional; `false` = "dada de baja" por el admin, se filtra de los
 resultados del chat (`js/chat.js` hace el filtro **en el cliente**, no en la
-query, para no requerir migrar documentos viejos).
+query, para no requerir migrar documentos viejos). `inmobiliariaLogoUrl` es
+una copia denormalizada del logo de la inmobiliaria en el momento en que se
+guardó/editó la propiedad — igual que `inmobiliariaNombre`, no se actualiza
+retroactivamente en propiedades ya cargadas si la inmobiliaria cambia el logo
+después (ver sección "Logo de inmobiliaria" más abajo).
 
 **Colección `contactos`** (nueva, doc id autogenerado):
 ```
@@ -159,7 +194,9 @@ query, para no requerir migrar documentos viejos).
 Solo escritura pública (cualquiera puede crear, nadie más lee/borra salvo el
 admin). Se usa únicamente para el contador de "contactos generados".
 
-**Storage**: fotos en `propiedades/{inmobiliariaId}/{propiedadId}/{uuid}-{nombre archivo}`.
+**Storage**:
+- Fotos de propiedades: `propiedades/{inmobiliariaId}/{propiedadId}/{uuid}-{nombre archivo}`.
+- Logos de inmobiliaria: `logos/{inmobiliariaId}/{uuid}-{nombre archivo}`.
 
 ## Reglas de seguridad actuales (viven solo en la consola de Firebase, no en el repo)
 
@@ -209,9 +246,24 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
       allow delete: if request.auth != null && request.auth.token.email == 'admin@propi.com';
     }
+
+    match /logos/{inmobiliariaId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == inmobiliariaId
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null
+                    && (request.auth.uid == inmobiliariaId || request.auth.token.email == 'admin@propi.com');
+    }
   }
 }
 ```
+**Verificado en vivo (2026-09-04)**: logueado con la cuenta de test, desde la
+consola del navegador — se subió un logo de prueba a `logos/{uid}/...`
+(éxito), se cargó como `<img>` público estando deslogueado (éxito, confirma
+`allow read: if true`), y se borró de nuevo con la cuenta dueña (éxito). Sin
+datos de prueba remanentes.
 
 ### ✅ Hueco de seguridad corregido (publicado 2026-08-26)
 Se había probado (con la cuenta de test) que **una inmobiliaria podía escribir el
@@ -330,21 +382,21 @@ propiedades (inmobiliaria, zona, precio, estado, botón Dar de baja/Reactivar).
 ## Pendientes / próximos pasos posibles
 1. **Usuario tiene que probar `admin.html` con su cuenta real** y confirmar
    que el dashboard funciona (stats, tablas, botones).
-2. **Decidir si aplicar la corrección del hueco de seguridad** de `activo`
-   en `inmobiliarias` (regla ya redactada arriba).
+2. ~~Decidir si aplicar la corrección del hueco de seguridad de `activo`~~ —
+   **hecho**, publicada y verificada en vivo el 2026-08-26 (ver sección de
+   reglas de Firestore).
 3. El usuario mencionó querer probar el envío real de emails de verificación
    con un email propio para descartar el tema de cuota/spam.
-4. No hay logo real subible para inmobiliarias (se usa un avatar con la
-   inicial del nombre) — si se quiere, es una función nueva a construir
-   (upload a Storage + campo `logoUrl` en el doc de la inmobiliaria).
+4. ~~No hay logo real subible para inmobiliarias~~ — **hecho** el 2026-09-04
+   (sección "Logo de inmobiliaria" arriba).
 5. El WhatsApp de contacto general de Propi (`js/chat.js`, ya no se usa —
    se eliminó `PROPI_WHATSAPP_NUMBER` porque cada propiedad tiene su propio
    WhatsApp real cargado por la inmobiliaria; no queda ningún placeholder de
    número pendiente de reemplazo en el código).
 
 ## Convenciones a respetar si se sigue trabajando
-- Siempre a**gregar `?v=N` (incrementando)** a los `<script src="js/chat.js?v=2">`
-  y `<link href="css/styles.css?v=2">` si se cambia contenido y se quiere
+- Siempre **agregar `?v=N` (incrementando)** a los `<script src="js/chat.js?v=N">`
+  y `<link href="css/styles.css?v=N">` si se cambia contenido y se quiere
   evitar caché vieja del navegador/CDN de GitHub Pages (patrón ya usado, hoy
   en `?v=2` en `index.html` y `panel.html`).
 - Antes de tocar Firestore/Storage, revisar si el cambio necesita una regla

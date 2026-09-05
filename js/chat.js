@@ -398,6 +398,7 @@ function toViewModel(property, score) {
     descripcion: property.descripcion || 'Esta inmobiliaria todavía no cargó una descripción para esta propiedad.',
     condiciones: property.condicionesEspeciales || [],
     agencyName: property.inmobiliariaNombre || 'Inmobiliaria de Rosario',
+    agencyLogoUrl: property.inmobiliariaLogoUrl || null,
     whatsappNumber: normalizeWhatsapp(property.whatsapp),
     whatsappDisplay: property.whatsapp || '',
     score,
@@ -626,7 +627,19 @@ function openPropertyModal(vm) {
   modalIndex = 0;
   resetZoom();
 
-  modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
+  modalAgencyAvatarEl.innerHTML = '';
+  if (vm.agencyLogoUrl) {
+    const logoImg = document.createElement('img');
+    logoImg.src = vm.agencyLogoUrl;
+    logoImg.alt = '';
+    logoImg.onerror = () => {
+      modalAgencyAvatarEl.innerHTML = '';
+      modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
+    };
+    modalAgencyAvatarEl.appendChild(logoImg);
+  } else {
+    modalAgencyAvatarEl.textContent = vm.agencyName.charAt(0).toUpperCase();
+  }
   modalAgencyNameEl.textContent = vm.agencyName;
   if (vm.whatsappDisplay) {
     modalAgencyPhoneEl.textContent = `WhatsApp: ${vm.whatsappDisplay}`;

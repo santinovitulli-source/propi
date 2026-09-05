@@ -1,6 +1,6 @@
 import { signOut } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
 import {
-  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, getDocs, query, where, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -39,6 +39,8 @@ let editingId = null;
 let existingPhotos = [];
 let removedPhotos = [];
 let newFiles = [];
+let currentLogoUrl = null;
+let currentLogoPath = null;
 
 function fillSelect(select, options) {
   options.forEach((opt) => {
@@ -81,7 +83,110 @@ requireAuth(async (user) => {
 
   currentUser = user;
   document.getElementById('panel-user').textContent = user.displayName || user.email;
+
+  const profileName = (profile && profile.nombre) || user.displayName || user.email;
+  document.getElementById('profile-name').textContent = profileName;
+  document.getElementById('profile-email').textContent = user.email;
+  currentLogoUrl = (profile && profile.logoUrl) || null;
+  currentLogoPath = (profile && profile.logoPath) || null;
+  renderProfileLogo();
+  updateRemoveLogoVisibility();
+
   loadProperties();
+});
+
+function renderProfileLogo() {
+  const el = document.getElementById('profile-logo-circle');
+  el.innerHTML = '';
+  if (currentLogoUrl) {
+    const img = document.createElement('img');
+    img.src = currentLogoUrl;
+    img.alt = '';
+    el.appendChild(img);
+  } else {
+    const name = document.getElementById('profile-name').textContent || '';
+    el.textContent = name.charAt(0).toUpperCase() || '?';
+  }
+}
+
+function updateRemoveLogoVisibility() {
+  document.getElementById('remove-logo-btn').hidden = !currentLogoUrl;
+}
+
+const logoInput = document.getElementById('f-logo');
+const removeLogoBtn = document.getElementById('remove-logo-btn');
+const logoErrorEl = document.getElementById('profile-logo-error');
+const logoUploadLabel = document.getElementById('logo-upload-label');
+
+logoInput.addEventListener('change', async () => {
+  const file = logoInput.files[0];
+  logoInput.value = '';
+  if (!file) return;
+  logoErrorEl.hidden = true;
+
+  if (!file.type.startsWith('image/')) {
+    logoErrorEl.textContent = 'El logo tiene que ser una imagen.';
+    logoErrorEl.hidden = false;
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    logoErrorEl.textContent = 'El logo no puede pesar más de 2 MB.';
+    logoErrorEl.hidden = false;
+    return;
+  }
+
+  const originalLabel = logoUploadLabel.textContent;
+  logoUploadLabel.textContent = 'Subiendo...';
+
+  try {
+    const path = `logos/${currentUser.uid}/${crypto.randomUUID()}-${file.name}`;
+    const fileRef = storageRef(storage, path);
+    await uploadBytes(fileRef, file);
+    const url = await getDownloadURL(fileRef);
+
+    const previousPath = currentLogoPath;
+    await updateDoc(doc(db, 'inmobiliarias', currentUser.uid), { logoUrl: url, logoPath: path });
+
+    if (previousPath) {
+      await deleteObject(storageRef(storage, previousPath)).catch(() => {});
+    }
+
+    currentLogoUrl = url;
+    currentLogoPath = path;
+    renderProfileLogo();
+    updateRemoveLogoVisibility();
+  } catch (err) {
+    console.error(err);
+    logoErrorEl.textContent = 'No se pudo subir el logo. Intentá de nuevo.';
+    logoErrorEl.hidden = false;
+  } finally {
+    logoUploadLabel.textContent = originalLabel;
+  }
+});
+
+removeLogoBtn.addEventListener('click', async () => {
+  if (!currentLogoUrl && !currentLogoPath) return;
+  if (!window.confirm('¿Quitar el logo de tu inmobiliaria?')) return;
+
+  const pathToDelete = currentLogoPath;
+  logoErrorEl.hidden = true;
+
+  try {
+    await updateDoc(doc(db, 'inmobiliarias', currentUser.uid), { logoUrl: deleteField(), logoPath: deleteField() });
+
+    if (pathToDelete) {
+      await deleteObject(storageRef(storage, pathToDelete)).catch(() => {});
+    }
+
+    currentLogoUrl = null;
+    currentLogoPath = null;
+    renderProfileLogo();
+    updateRemoveLogoVisibility();
+  } catch (err) {
+    console.error(err);
+    logoErrorEl.textContent = 'No se pudo quitar el logo. Intentá de nuevo.';
+    logoErrorEl.hidden = false;
+  }
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -297,6 +402,7 @@ formEl.addEventListener('submit', async (e) => {
   const propertyData = {
     inmobiliariaId: currentUser.uid,
     inmobiliariaNombre: currentUser.displayName || currentUser.email,
+    inmobiliariaLogoUrl: currentLogoUrl || null,
     operacion: selectors.operacion.value,
     tipoPropiedad: selectors.tipo.value,
     zona: selectors.zona.value,
